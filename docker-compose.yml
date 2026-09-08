@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ustaw POSTGRES_PASSWORD w pliku .env}
+      POSTGRES_DB: ${POSTGRES_DB:-hub}
+    volumes:
+      - hub_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hub} -d ${POSTGRES_DB:-hub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    container_name: hub-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hub}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-hub}
+    ports:
+      - "8011:8000"
+    # Pozwala Hubowi łączyć się z Postgresem appek działających jako systemd na hoście
+    # (koloseum, gameplan) przez host.docker.internal zamiast localhost.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - sso_net
+
+networks:
+  # Sieć zewnętrzna, wspólna z kontenerami baz danych appek dockerowych
+  # (zflix, easyconv, home-library, notemaster, planowiec), żeby panel admina
+  # Huba mógł je odpytać o listę lokalnych userów. Utwórz raz:
+  #   docker network create sso_net
+  # i dopisz tę samą sieć jako dodatkową do serwisu "db" w KAŻDEJ z tych apek
+  # (patrz README.md, sekcja "Podłączenie do sso_net").
+  sso_net:
+    external: true
+
+volumes:
+  hub_pgdata:

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Zaloguj się — LoginHub{% endblock %}
+{% block content %}
+  <div class="login-page">
+    <div class="card login-card">
+      {% include "_brand.html" %}
+      <p class="subtitle">Zaloguj się jednym kontem do wszystkich aplikacji</p>
+      {% if error %}<p class="flash-error">{{ error }}</p>{% endif %}
+      <form method="post">
+        <input type="hidden" name="next" value="{{ next }}">
+        <div><input type="text" name="username" placeholder="Login" autofocus required></div>
+        <div><input type="password" name="password" placeholder="Hasło" required></div>
+        <div><button type="submit">Zaloguj</button></div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

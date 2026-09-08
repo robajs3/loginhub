@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}LoginHub{% endblock %}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --accent: #6366f1;
+      --accent-dark: #4f46e5;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --ok: #16a34a;
+      --error: #dc2626;
+      --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1120;
+        --card-bg: #131c2e;
+        --border: #253044;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 32px 16px 64px;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 1.25rem; margin-bottom: 24px;
+    }
+    .brand .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: .04em;
+         color: var(--text-muted); margin: 32px 0 12px; font-weight: 600; }
+    .subtitle { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      margin: 14px 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    input[type=text], input[type=password], input[type=number], select {
+      font-size: 0.95rem; padding: 9px 12px; margin: 4px 0;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); width: 100%; max-width: 340px;
+    }
+    input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    button, .btn {
+      font-size: 0.9rem; padding: 9px 16px; margin: 4px 2px;
+      border: none; border-radius: 8px; cursor: pointer;
+      background: var(--accent); color: white; font-weight: 600;
+      transition: background 0.15s;
+    }
+    button:hover, .btn:hover { background: var(--accent-dark); }
+    button.secondary, .btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    button.secondary:hover { background: var(--border); }
+    form.inline { display: inline; }
+    .flash-ok, .flash-error {
+      max-width: 880px; margin: 0 auto 16px; padding: 10px 16px; border-radius: 8px; font-size: 0.9rem;
+    }
+    .flash-ok { color: var(--ok); background: rgba(22,163,74,0.1); }
+    .flash-error { color: var(--error); background: rgba(220,38,38,0.1); }
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 999px;
+      background: var(--bg); border: 1px solid var(--border);
+      font-size: 0.82em; margin: 3px 4px 3px 0;
+    }
+    .badge a { text-decoration: none; color: var(--accent); font-weight: 600; }
+    .badge.pending { background: rgba(234,179,8,0.12); border-color: rgba(234,179,8,0.3); }
+    nav { display: flex; justify-content: space-between; align-items: center;
+          color: var(--text-muted); font-size: 0.9rem; margin-bottom: 4px; }
+    nav a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .login-page {
+      display: flex; align-items: center; justify-content: center; min-height: 80vh;
+      background: radial-gradient(circle at 30% 20%, rgba(99,102,241,0.10), transparent 60%),
+                  radial-gradient(circle at 80% 80%, rgba(168,85,247,0.08), transparent 55%);
+      border-radius: var(--radius);
+      margin: -16px -16px 0;
+      padding: 16px;
+    }
+    .login-card {
+      width: 100%; max-width: 380px; text-align: center;
+      box-shadow: 0 8px 30px rgba(79,70,229,0.12), 0 1px 2px rgba(0,0,0,0.04);
+      padding: 32px 28px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+    }
+    .login-card .brand { justify-content: center; margin-bottom: 4px; font-size: 1.4rem; }
+    .login-card input { max-width: none; width: 100%; }
+    .login-card button { width: 100%; padding: 12px; margin-top: 12px; font-size: 0.95rem; }
+    .muted { color: var(--text-muted); font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <p class="flash-{{ category }}">{{ message }}</p>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Panel admina — LoginHub{% endblock %}
+{% block content %}
+  {% include "_brand.html" %}
+  <nav>
+    <span>Zalogowany jako <strong>{{ current_user.username }}</strong></span>
+    <a href="{{ url_for('auth.logout') }}">Wyloguj</a>
+  </nav>
+  <p class="subtitle">Panel administratora — konta i połączenia z aplikacjami</p>
+
+  <div class="card">
+    <h2 style="margin-top:0">Nowe konto</h2>
+    <form method="post" action="{{ url_for('admin.new_user') }}">
+      <div><input type="text" name="username" placeholder="Login" required></div>
+      <div><input type="text" name="display_name" placeholder="Wyświetlana nazwa (opcjonalnie)"></div>
+      <div><input type="password" name="password" placeholder="Hasło (puste = migracja ze starej appki przy 1. logowaniu)"></div>
+      <div><label><input type="checkbox" name="is_admin"> Administrator</label></div>
+      <div><button type="submit">Utwórz konto</button></div>
+    </form>
+  </div>
+
+  <h2>Konta i połączenia z aplikacjami</h2>
+  {% for user in users %}
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+        <div>
+          <strong style="font-size:1.05rem;">{{ user.username }}</strong>
+          {% if user.is_admin %}<span class="badge">admin</span>{% endif %}
+          {% if not user.password_hash %}<span class="badge pending">⏳ czeka na migrację hasła</span>{% endif %}
+        </div>
+        <div>
+          {% if user.password_hash %}
+          <form class="inline" method="post" action="{{ url_for('admin.clear_password', user_id=user.id) }}"
+                onsubmit="return confirm('Wyczyścić hasło {{ user.username }}? Przy następnym logowaniu zostanie zmigrowane z appki.');">
+            <button type="submit" class="secondary">Wyczyść hasło</button>
+          </form>
+          {% endif %}
+          <form class="inline" method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}"
+                onsubmit="return confirm('Usunąć konto {{ user.username }} z LoginHub? Nie usuwa kont w appkach.');">
+            <button type="submit" class="secondary">Usuń</button>
+          </form>
+        </div>
+      </div>
+
+      <p class="muted" style="margin-bottom:6px;">Połączone aplikacje:</p>
+      {% set user_links = links_by_user.get(user.id, []) %}
+      {% for slug, app in apps.items() %}
+        {% set link = user_links | selectattr('app_slug', 'equalto', slug) | first %}
+        {% if link %}
+          <span class="badge">
+            ✅ {{ app.label }} (#{{ link.local_user_id }}{% if link.local_username %} — {{ link.local_username }}{% endif %})
+            · <a href="{{ url_for('admin.link_form', user_id=user.id, app_slug=slug) }}">zmień</a>
+            · <form class="inline" method="post" action="{{ url_for('admin.delete_link', link_id=link.id) }}">
+              <button type="submit" style="border:none;background:none;color:var(--error);cursor:pointer;padding:0;font-weight:600;">odłącz</button>
+            </form>
+          </span>
+        {% else %}
+          <a class="badge" href="{{ url_for('admin.link_form', user_id=user.id, app_slug=slug) }}">➕ {{ app.label }}</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">Brak kont. Utwórz pierwsze powyżej.</p>
+  {% endfor %}
+{% endblock %}

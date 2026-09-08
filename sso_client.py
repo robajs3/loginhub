@@ -1,0 +1,91 @@
+"""
+sso_client.py — wspólny moduł SSO dla appek podpiętych pod LoginHub.
+
+Skopiuj ten plik do katalogu głównego appki (obok app.py/config.py) i wywołaj
+`resolve_local_user_id(app_slug=...)` na początku obsługi żądania (np. w
+`@app.before_request`), żeby sprawdzić, czy przeglądarka ma ważne ciasteczko
+LoginHub i, jeśli tak, jaki ma dla NIEJ lokalny user_id.
+
+WYMAGA: `pip install requests itsdangerous` (itsdangerous i tak zwykle jest
+już zainstalowane jako zależność Flaska/Flask-Login).
+
+Appka NIC nie musi wiedzieć o hashach haseł ani o bazie LoginHub — cała logika
+uwierzytelniania zostaje po stronie LoginHub, appka tylko pyta "czy znasz tego
+człowieka i jaki ma tu numer".
+"""
+import os
+
+import requests
+from flask import request
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+
+_SALT = "sso-hub-v1"  # MUSI być identyczna wartość co w LoginHub — nie zmieniaj
+
+
+def _verify_cookie(sso_secret: str, token: str, max_age_seconds: int):
+    s = URLSafeTimedSerializer(sso_secret, salt=_SALT)
+    try:
+        return s.loads(token, max_age=max_age_seconds)
+    except (BadSignature, SignatureExpired):
+        return None
+
+
+def resolve_local_user_id(
+    app_slug: str,
+    cookie_name: str = None,
+    sso_secret: str = None,
+    hub_internal_url: str = None,
+    max_age_days: int = None,
+):
+    """Zwraca lokalny user_id (int) jeśli przeglądarka ma ważne ciasteczko LoginHub
+    ORAZ to konto jest połączone z tą appką w panelu admina. W przeciwnym razie None.
+
+    Wszystkie parametry opcjonalne — domyślnie czytane ze zmiennych środowiskowych:
+      SSO_COOKIE_NAME (domyślnie "sso_session")
+      SSO_SECRET (WYMAGANE — ten sam string co w .env LoginHub)
+      HUB_INTERNAL_URL (domyślnie "http://127.0.0.1:8011" — dla appek systemd;
+                         appki dockerowe podłączone do sso_net powinny ustawić
+                         "http://hub-web:8000")
+      SSO_SESSION_DAYS (domyślnie 30 — musi się zgadzać z LoginHub, inaczej appka
+                         mogłaby odrzucać ciasteczko wcześniej/później niż LoginHub)
+    """
+    cookie_name = cookie_name or os.environ.get("SSO_COOKIE_NAME", "sso_session")
+    sso_secret = sso_secret or os.environ.get("SSO_SECRET")
+    hub_internal_url = (hub_internal_url or os.environ.get("HUB_INTERNAL_URL", "http://127.0.0.1:8011")).rstrip("/")
+    max_age_days = max_age_days or int(os.environ.get("SSO_SESSION_DAYS", "30"))
+
+    if not sso_secret:
+        return None  # SSO nieskonfigurowane w tej appce — nie wybuchaj, po prostu nie loguj przez SSO
+
+    token = request.cookies.get(cookie_name)
+    if not token:
+        return None
+
+    data = _verify_cookie(sso_secret, token, max_age_days * 86400)
+    if not data:
+        return None
+
+    try:
+        resp = requests.get(
+            f"{hub_internal_url}/api/resolve",
+            params={"app_slug": app_slug, "hub_user_id": data["hub_user_id"]},
+            headers={"X-SSO-Api-Key": sso_secret},
+            timeout=3,
+        )
+    except requests.RequestException:
+        return None  # LoginHub niedostępny — appka po prostu nie zaloguje przez SSO w tym requeście
+
+    if resp.status_code != 200:
+        return None
+
+    payload = resp.json()
+    if not payload.get("linked"):
+        return None
+
+    return payload["local_user_id"]
+
+
+def login_url(next_path: str, hub_public_prefix: str = "/auth") -> str:
+    """Buduje adres logowania w LoginHub z powrotem-linkiem do bieżącej appki."""
+    from urllib.parse import quote
+    return f"{hub_public_prefix}/login?next={quote(next_path)}"
