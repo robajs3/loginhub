@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Panel admina — LoginHub{% endblock %}
 {% block content %}
-  {% include "_brand.html" %}
-  <nav>
-    <span>Zalogowany jako <strong>{{ current_user.username }}</strong></span>
-    <a href="{{ url_for('auth.logout') }}">Wyloguj</a>
-  </nav>
-  <p class="subtitle">Panel administratora — konta i połączenia z aplikacjami</p>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> LoginHub</div>
+    <div style="display:flex; align-items:center; gap:14px; font-size:0.9rem; color:var(--text-muted);">
+      <span>Zalogowany jako <strong style="color:var(--text)">{{ current_user.username }}</strong></span>
+      <a href="{{ url_for('auth.logout') }}">Wyloguj</a>
+    </div>
+  </div>
+  <p class="subtitle">Konta i połączenia z aplikacjami</p>
 
   <div class="card">
     <h2 style="margin-top:0">Nowe konto</h2>
@@ -19,14 +21,22 @@
     </form>
   </div>
 
-  <h2>Konta i połączenia z aplikacjami</h2>
+  <h2>Konta</h2>
   {% for user in users %}
     <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-        <div>
-          <strong style="font-size:1.05rem;">{{ user.username }}</strong>
-          {% if user.is_admin %}<span class="badge">admin</span>{% endif %}
-          {% if not user.password_hash %}<span class="badge pending">⏳ czeka na migrację hasła</span>{% endif %}
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div class="user-row">
+          <span class="avatar">{{ user.username[0]|upper }}</span>
+          <div>
+            <strong style="font-size:1.02rem;">{{ user.username }}</strong>
+            {% if user.display_name and user.display_name != user.username %}
+              <span class="muted"> · {{ user.display_name }}</span>
+            {% endif %}
+            <div>
+              {% if user.is_admin %}<span class="badge">admin</span>{% endif %}
+              {% if not user.password_hash %}<span class="badge pending">⏳ czeka na migrację hasła</span>{% endif %}
+            </div>
+          </div>
         </div>
         <div>
           {% if user.password_hash %}
@@ -42,20 +52,20 @@
         </div>
       </div>
 
-      <p class="muted" style="margin-bottom:6px;">Połączone aplikacje:</p>
+      <p class="muted" style="margin:14px 0 6px;">Połączone aplikacje:</p>
       {% set user_links = links_by_user.get(user.id, []) %}
       {% for slug, app in apps.items() %}
         {% set link = user_links | selectattr('app_slug', 'equalto', slug) | first %}
         {% if link %}
-          <span class="badge">
-            ✅ {{ app.label }} (#{{ link.local_user_id }}{% if link.local_username %} — {{ link.local_username }}{% endif %})
+          <span class="badge linked">
+            ✓ {{ app.label }}{% if link.local_username %} — {{ link.local_username }}{% endif %}
             · <a href="{{ url_for('admin.link_form', user_id=user.id, app_slug=slug) }}">zmień</a>
             · <form class="inline" method="post" action="{{ url_for('admin.delete_link', link_id=link.id) }}">
-              <button type="submit" style="border:none;background:none;color:var(--error);cursor:pointer;padding:0;font-weight:600;">odłącz</button>
+              <button type="submit" class="link-danger">odłącz</button>
             </form>
           </span>
         {% else %}
-          <a class="badge" href="{{ url_for('admin.link_form', user_id=user.id, app_slug=slug) }}">➕ {{ app.label }}</a>
+          <a class="badge" href="{{ url_for('admin.link_form', user_id=user.id, app_slug=slug) }}">+ {{ app.label }}</a>
         {% endif %}
       {% endfor %}
     </div>

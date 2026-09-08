@@ -89,3 +89,18 @@ def login_url(next_path: str, hub_public_prefix: str = "/auth") -> str:
     """Buduje adres logowania w LoginHub z powrotem-linkiem do bieżącej appki."""
     from urllib.parse import quote
     return f"{hub_public_prefix}/login?next={quote(next_path)}"
+
+
+def clear_sso_cookie(response, cookie_name: str = None):
+    """Wywołaj w route'ach /logout appek, żeby wylogowanie było globalne (ze
+    wszystkich appek naraz), a nie tylko lokalne — inaczej _sso_autologin
+    zaloguje z powrotem przy następnym żądaniu, bo ciasteczko wciąż ważne.
+
+    Użycie:
+        response = make_response(redirect(url_for("auth.login")))
+        sso_client.clear_sso_cookie(response)
+        return response
+    """
+    cookie_name = cookie_name or os.environ.get("SSO_COOKIE_NAME", "sso_session")
+    response.delete_cookie(cookie_name, path="/")
+    return response

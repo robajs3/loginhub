@@ -1,43 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Połącz z {{ app_label }} — LoginHub{% endblock %}
 {% block content %}
-  {% include "_brand.html" %}
-  <p><a href="{{ url_for('admin.dashboard') }}">&larr; wróć do panelu</a></p>
-  <div class="card">
-    <h1>Połącz {{ user.username }} z {{ app_label }}</h1>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> LoginHub</div>
+    <a href="{{ url_for('admin.dashboard') }}">&larr; Wróć do panelu</a>
+  </div>
 
-  {% if error %}
-    <p class="flash-error">Nie udało się pobrać listy userów: {{ error }}</p>
-    <p>Możesz mimo to podać ID i login lokalnego usera ręcznie:</p>
-  {% endif %}
+  <div class="card" style="max-width:480px;">
+    <h1 style="margin-top:0;">Połącz <span style="color:var(--accent)">{{ user.username }}</span> z {{ app_label }}</h1>
 
-  <form method="post" action="{{ url_for('admin.create_link') }}">
-    <input type="hidden" name="hub_user_id" value="{{ user.id }}">
-    <input type="hidden" name="app_slug" value="{{ app_slug }}">
-
-    {% if app_users %}
-      <div>
-        <select name="local_user_id" id="userselect" onchange="document.getElementById('unamefield').value = this.options[this.selectedIndex].dataset.uname;">
-          <option value="">— wybierz lokalnego użytkownika —</option>
-          {% for uid, uname in app_users %}
-            <option value="{{ uid }}" data-uname="{{ uname }}"
-              {% if existing_link and existing_link.local_user_id == uid %}selected{% endif %}>
-              #{{ uid }} — {{ uname }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-    {% else %}
-      <div><input type="number" name="local_user_id" placeholder="Lokalne ID użytkownika" required
-                   value="{{ existing_link.local_user_id if existing_link else '' }}"></div>
-      <div><input type="text" name="local_username" placeholder="Login (tylko do wyświetlania w panelu, opcjonalnie)"
-                   value="{{ existing_link.local_username if existing_link else '' }}"></div>
-    {% endif %}
-    {% if app_users %}
-    <input type="hidden" id="unamefield" name="local_username" value="{{ existing_link.local_username if existing_link else '' }}">
+    {% if error %}
+      <p class="flash-error" style="margin:0 0 4px;">Nie udało się pobrać listy userów: {{ error }}</p>
+      <p class="muted" style="margin-top:0;">Możesz mimo to podać ID i login lokalnego usera ręcznie:</p>
     {% endif %}
 
-    <div><button type="submit">Zapisz połączenie</button></div>
-  </form>
+    <form method="post" action="{{ url_for('admin.create_link') }}">
+      <input type="hidden" name="hub_user_id" value="{{ user.id }}">
+      <input type="hidden" name="app_slug" value="{{ app_slug }}">
+
+      {% if app_users %}
+        <div>
+          <select name="local_user_id" id="userselect" onchange="document.getElementById('unamefield').value = this.options[this.selectedIndex].dataset.uname;">
+            <option value="">— wybierz lokalnego użytkownika —</option>
+            {% for uid, uname in app_users %}
+              <option value="{{ uid }}" data-uname="{{ uname }}"
+                {% if existing_link and existing_link.local_user_id == uid %}selected{% endif %}>
+                #{{ uid }} — {{ uname }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% else %}
+        <div><input type="number" name="local_user_id" placeholder="Lokalne ID użytkownika" required
+                     value="{{ existing_link.local_user_id if existing_link else '' }}"></div>
+        <div><input type="text" name="local_username" placeholder="Login (tylko do wyświetlania w panelu, opcjonalnie)"
+                     value="{{ existing_link.local_username if existing_link else '' }}"></div>
+      {% endif %}
+      {% if app_users %}
+      <input type="hidden" id="unamefield" name="local_username" value="{{ existing_link.local_username if existing_link else '' }}">
+      {% endif %}
+
+      <div><button type="submit">Zapisz połączenie</button></div>
+    </form>
   </div>
 {% endblock %}
