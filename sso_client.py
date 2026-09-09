@@ -85,6 +85,100 @@ def resolve_local_user_id(
     return payload["local_user_id"]
 
 
+def resolve_or_create_local_user(
+    app_slug: str,
+    create_user,
+    cookie_name: str = None,
+    sso_secret: str = None,
+    hub_internal_url: str = None,
+    max_age_days: int = None,
+):
+    """Jak `resolve_local_user_id`, ale gdy konto z Huba NIE jest jeszcze podłączone
+    do tej appki, zamiast zwrócić None od razu automatycznie zakłada tu dla niego
+    nowe lokalne konto i zgłasza połączenie do LoginHub — użytkownik nie musi czekać,
+    aż admin ręcznie sparuje konta w panelu /admin.
+
+    `create_user` to funkcja appki (Ty ją piszesz, bo tylko appka zna swój model
+    User i schemat hasła):
+
+        def create_user(hub_username: str) -> tuple[int, str | None]:
+            # 1) załóż nowego usera swoim zwykłym mechanizmem (swoje ORM, swój
+            #    hash hasła), z hasłem losowym/nieużywalnym — logowanie i tak
+            #    zawsze będzie szło przez SSO;
+            # 2) jeśli hub_username koliduje z istniejącym userem lokalnym,
+            #    rozwiąż to po swojemu (np. dopisz sufiks);
+            # 3) zwróć (nowy_local_user_id, local_username_do_wyswietlenia_w_hubie).
+
+    WAŻNE — idempotencja: jeśli zgłoszenie do Huba (/api/link) nie dojdzie (Hub
+    akurat niedostępny), przy KOLEJNYM requeście appka znów nie zobaczy linku i
+    `create_user` zostanie wywołane ponownie. Żeby uniknąć duplikatów, warto, żeby
+    `create_user` najpierw sprawdzał, czy lokalne konto o takim (deterministycznie
+    wyprowadzonym z hub_username) identyfikatorze już istnieje, i wtedy zwracał je
+    zamiast tworzyć nowe (czyli "get-or-create", nie "create").
+
+    Zwraca local_user_id (int) albo None — przy None appka po prostu pokazuje swój
+    normalny /login, nic się nie psuje.
+    """
+    cookie_name = cookie_name or os.environ.get("SSO_COOKIE_NAME", "sso_session")
+    sso_secret = sso_secret or os.environ.get("SSO_SECRET")
+    hub_internal_url = (hub_internal_url or os.environ.get("HUB_INTERNAL_URL", "http://127.0.0.1:8011")).rstrip("/")
+    max_age_days = max_age_days or int(os.environ.get("SSO_SESSION_DAYS", "30"))
+
+    if not sso_secret:
+        return None
+
+    token = request.cookies.get(cookie_name)
+    if not token:
+        return None
+
+    data = _verify_cookie(sso_secret, token, max_age_days * 86400)
+    if not data:
+        return None
+
+    hub_user_id = data["hub_user_id"]
+
+    try:
+        resp = requests.get(
+            f"{hub_internal_url}/api/resolve",
+            params={"app_slug": app_slug, "hub_user_id": hub_user_id},
+            headers={"X-SSO-Api-Key": sso_secret},
+            timeout=3,
+        )
+    except requests.RequestException:
+        return None  # Hub niedostępny — nie zgadujemy, zwykły /login jako plan B
+
+    if resp.status_code == 200:
+        payload = resp.json()
+        if payload.get("linked"):
+            return payload["local_user_id"]
+    elif resp.status_code != 404:
+        return None  # nieoczekiwana odpowiedź Huba
+
+    # brak połączenia -> appka sama zakłada tu konto dla tego usera z Huba
+    try:
+        local_user_id, local_username = create_user(data["username"])
+    except Exception:
+        return None  # appka nie potrafiła założyć konta — zwykły /login jako plan B
+
+    try:
+        requests.post(
+            f"{hub_internal_url}/api/link",
+            json={
+                "app_slug": app_slug,
+                "hub_user_id": hub_user_id,
+                "local_user_id": local_user_id,
+                "local_username": local_username,
+            },
+            headers={"X-SSO-Api-Key": sso_secret},
+            timeout=3,
+        )
+    except requests.RequestException:
+        pass  # appka i tak ma już lokalne konto i zaloguje usera w tym requeście;
+        # Hub po prostu nie będzie o nim jeszcze wiedział do następnej udanej próby
+
+    return local_user_id
+
+
 def login_url(next_path: str, hub_public_prefix: str = "/auth") -> str:
     """Buduje adres logowania w LoginHub z powrotem-linkiem do bieżącej appki."""
     from urllib.parse import quote

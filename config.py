@@ -11,6 +11,12 @@ class Config:
     SSO_COOKIE_NAME = os.environ.get("SSO_COOKIE_NAME", "sso_session")
     SSO_SESSION_DAYS = int(os.environ.get("SSO_SESSION_DAYS", "30"))
 
+    # Samodzielna rejestracja pod /auth/register. Hub jest wystawiony publicznie
+    # przez Tailscale Funnel, więc domyślnie WŁĄCZONE, ale jeśli chcesz, żeby konta
+    # zakładał tylko admin (panel /admin -> "Nowe konto"), ustaw w .env:
+    #   ALLOW_REGISTRATION=false
+    ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower() in ("1", "true", "yes")
+
     # Rejestr appek widocznych w panelu admina — slug musi być identyczny z tym,
     # którego appka używa w sso_middleware.py (APP_SLUG w jej configu).
     # display_column = kolumna pokazywana w panelu jako "login" (różni się między appkami!).

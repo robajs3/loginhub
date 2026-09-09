@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Zarejestruj się — LoginHub{% endblock %}
+{% block content %}
+  <div class="login-page">
+    <div class="card login-card">
+      {% include "_brand.html" %}
+      <p class="subtitle">Załóż jedno konto do wszystkich aplikacji</p>
+      {% if error %}<p class="flash-error">{{ error }}</p>{% endif %}
+      {% if not disabled %}
+      <form method="post">
+        <input type="hidden" name="next" value="{{ next }}">
+        <div><input type="text" name="username" placeholder="Login" value="{{ username }}" autofocus required minlength="3"></div>
+        <div><input type="text" name="display_name" placeholder="Wyświetlana nazwa (opcjonalnie)" value="{{ display_name }}"></div>
+        <div><input type="password" name="password" placeholder="Hasło (min. 8 znaków)" required minlength="8"></div>
+        <div><input type="password" name="password2" placeholder="Powtórz hasło" required minlength="8"></div>
+        <div><button type="submit">Załóż konto</button></div>
+      </form>
+      {% endif %}
+      <p class="muted" style="margin-top:14px;">Masz już konto? <a href="{{ url_for('auth.login', next=next) }}">Zaloguj się</a></p>
+    </div>
+  </div>
+{% endblock %}

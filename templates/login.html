@@ -12,6 +12,7 @@
         <div><input type="password" name="password" placeholder="Hasło" required></div>
         <div><button type="submit">Zaloguj</button></div>
       </form>
+      <p class="muted" style="margin-top:14px;">Nie masz konta? <a href="{{ url_for('auth.register', next=next) }}">Zarejestruj się</a></p>
     </div>
   </div>
 {% endblock %}

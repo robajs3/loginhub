@@ -73,6 +73,64 @@ def login():
     return render_template("login.html", error=None, next=next_url)
 
 
+@auth_bp.route("/register", methods=["GET", "POST"])
+def register():
+    next_url = _safe_next(request.args.get("next") or request.form.get("next") or "/")
+
+    if not current_app.config["ALLOW_REGISTRATION"]:
+        return render_template(
+            "register.html",
+            error="Rejestracja jest wyłączona. Poproś administratora o założenie konta.",
+            next=next_url, username="", display_name="", disabled=True,
+        )
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        display_name = (request.form.get("display_name") or "").strip()
+        password = request.form.get("password") or ""
+        password2 = request.form.get("password2") or ""
+
+        error = None
+        if len(username) < 3:
+            error = "Login musi mieć co najmniej 3 znaki."
+        elif HubUser.query.filter_by(username=username).first():
+            error = "Taki login jest już zajęty."
+        elif len(password) < 8:
+            error = "Hasło musi mieć co najmniej 8 znaków."
+        elif password != password2:
+            error = "Podane hasła różnią się od siebie."
+
+        if error:
+            return render_template(
+                "register.html", error=error, next=next_url,
+                username=username, display_name=display_name, disabled=False,
+            )
+
+        user = HubUser(username=username, display_name=display_name or username, is_admin=False)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+        # od razu logujemy nowo założone konto, tak jak przy zwykłym /login
+        token = issue_token(current_app.config["SSO_SECRET"], user.id, user.username)
+        resp = make_response(redirect(next_url))
+        resp.set_cookie(
+            current_app.config["SSO_COOKIE_NAME"],
+            token,
+            max_age=int(timedelta(days=current_app.config["SSO_SESSION_DAYS"]).total_seconds()),
+            path="/",
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+        )
+        return resp
+
+    return render_template(
+        "register.html", error=None, next=next_url,
+        username="", display_name="", disabled=False,
+    )
+
+
 @auth_bp.route("/logout")
 def logout():
     resp = make_response(redirect(url_for("auth.login")))

@@ -4,11 +4,16 @@
 
 Jedna appka Flask + Postgres, która:
 - trzyma **jedyne** konta z hasłami (tabela `hub_users`),
+- pozwala samodzielnie założyć konto pod `/auth/register` (można wyłączyć —
+  `ALLOW_REGISTRATION=false`), albo admin zakłada je ręcznie w `/admin`,
 - po zalogowaniu ustawia wspólne ciasteczko `sso_session` na całym hoście (`Path=/`),
 - trzyma mapowania `hub_user ↔ lokalny user_id w każdej appce` (tabela `sso_links`),
 - ma panel admina do ręcznego łączenia kont (`/admin`),
 - wystawia małe wewnętrzne API (`/api/resolve`), którego pytają appki: "jaki jest mój
-  lokalny user_id dla tego zalogowanego człowieka?".
+  lokalny user_id dla tego zalogowanego człowieka?", oraz `/api/link` (`POST`), którym
+  appka sama zgłasza nowo założone u siebie konto, gdy korzysta z auto-provisioningu
+  (`sso_client.resolve_or_create_local_user` — patrz `INTEGRATION.md`) zamiast
+  czekać na ręczne połączenie kont przez admina.
 
 **Nie rusza** żadnej istniejącej tabeli `users` w żadnej z 8 appek — dokłada tylko
 mapowanie po swojej stronie.
@@ -83,6 +88,10 @@ LAN (`192.168.1.150`) — też już obsłużone, żadnej dodatkowej sieci nie po
   ```
 - `SSO_SECRET` — **zapisz gdzieś obok**, będzie potrzebny w `.env` każdej z 8 appek
   (ten sam string wszędzie).
+- `ALLOW_REGISTRATION` — `true`/`false` (domyślnie `true`). Włącza/wyłącza publiczną
+  samoobsługową rejestrację pod `/auth/register`. Hub jest wystawiony na świat przez
+  Tailscale Funnel, więc jeśli chcesz, żeby konta zakładał wyłącznie admin przez
+  panel `/admin`, ustaw `ALLOW_REGISTRATION=false`.
 - `*_DB_URL` dla każdej appki — prawdziwe hasła z ich `.env`/`docker-compose.yml`
   (host to nazwa kontenera bazy dla appek dockerowych, `host.docker.internal` dla
   systemd, `192.168.1.150` dla filevault). Nazwy kontenerów baz na Twoim serwerze:
