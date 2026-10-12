@@ -199,6 +199,24 @@ def _sso_autologin():
             login_user(user)
 ```
 
+## VM Portal (Flask-Login, slug `vmportal`, prefiks `/vmka1`)
+
+Zintegrowany jak Koloseum (`resolve_or_create_local_user`), z jedną różnicą: **nowe konta
+założone przez SSO nie mają dostępu do maszyn**, dopóki admin VM Portalu nie zatwierdzi ich
+w `/vmka1/admin` (flaga `users.is_allowed`; admin = `ADMIN_USERNAME` ma dostęp zawsze).
+
+Po stronie Huba:
+- w `.env` dopisz `VMPORTAL_DB_URL=postgresql://vmportal_app:<haslo>@vmportal-postgres:5432/app_db`
+  (wpis `vmportal` w `APPS` w `config.py` już jest),
+- kontener `vmportal-postgres` musi być w sieci `sso_net` (zrobione w `docker-compose.yml` VM Portalu).
+
+Po stronie VM Portalu (`.env` obok `docker-compose.yml`): `SSO_SECRET` (ten sam co w Hubie)
+i opcjonalnie `HUB_INTERNAL_URL` (domyślnie `http://hub-web:8000`). Serwisy `flask` i `postgres`
+dołączają do `sso_net`.
+
+Uwaga: nazwa użytkownika `ADMIN_USERNAME` w VM Portalu powinna być identyczna z loginem admina
+w Hubie — konto w Hubie o tej nazwie dostaje uprawnienia admina VM Portalu.
+
 ---
 
 ## Automatyczne zakładanie konta przy pierwszej wizycie w niepodłączonej appce

@@ -29,4 +29,5 @@ class Config:
         "notemaster":   {"label": "NoteMaster",    "db_url_env": "NOTEMASTER_DB_URL",   "users_table": "users", "display_column": "username"},
         "gameplan":     {"label": "GamePlan",      "db_url_env": "GAMEPLAN_DB_URL",     "users_table": "user",  "display_column": "username"},
         "planowiec":    {"label": "Planowiec",     "db_url_env": "PLANOWIEC_DB_URL",    "users_table": "users", "display_column": "username"},
+        "vmportal":     {"label": "VM Portal",     "db_url_env": "VMPORTAL_DB_URL",     "users_table": "users", "display_column": "username"},
     }
